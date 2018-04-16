@@ -1,17 +1,11 @@
 //Create keyspace
-CREATE KEYSPACE IF NOT EXISTS TrafficKeySpace WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};
+CREATE KEYSPACE IF NOT EXISTS TemperatureKeySpace WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};
 
 //Create table
-CREATE TABLE TrafficKeySpace.Total_Traffic (routeId text ,  vehicleType text,  totalCount bigint, timeStamp temp,recordDate text,PRIMARY KEY (routeId,recordDate,vehicleType));
-CREATE TABLE TrafficKeySpace.Window_Traffic (routeId text , vehicleType text,  totalCount bigint, timeStamp temp,recordDate text,PRIMARY KEY (routeId,recordDate,vehicleType));
-CREATE TABLE TrafficKeySpace.Poi_Traffic(vehicleid text , vehicletype text , distance bigint,  timeStamp temp,PRIMARY KEY (vehicleid));
+CREATE TABLE TemperatureKeySpace.TemperatureEvent (latitude text, longitude text, temp bigint, avgTemp bigint, timeStamp temp, PRIMARY KEY (lat,lng,timestamp));
 
 //Select from table
-SELECT * FROM TrafficKeySpace.Total_Traffic;
-SELECT * FROM TrafficKeySpace.Window_Traffic;
-SELECT * FROM TrafficKeySpace.Poi_Traffic;
+SELECT * FROM TemperatureKeySpace.TemperatureEvent;
 
 //Truncate table
-TRUNCATE TABLE TrafficKeySpace.Total_Traffic;
-TRUNCATE TABLE TrafficKeySpace.Window_Traffic;
-TRUNCATE TABLE TrafficKeySpace.Poi_Traffic;
+TRUNCATE TABLE TemperatureKeySpace.TemperatureEvent;
