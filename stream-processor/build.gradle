@@ -43,7 +43,6 @@ dependencies {
     compile group: 'org.apache.spark', name: 'spark-sql_2.11', version: '2.3.0'
     compile group: 'org.apache.spark', name: 'spark-sql-kafka-0-10_2.11', version: '2.3.0'
 
-
     compile group: 'org.apache.spark', name: 'spark-streaming-kafka_2.11', version: '1.6.7'
     compile group: 'com.datastax.spark', name: 'spark-cassandra-connector_2.11', version: '2.0.0-M1'
 

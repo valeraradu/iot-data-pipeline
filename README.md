@@ -11,7 +11,7 @@ ubuntu(possible to make it work with any other os but as is it will not work due
  issues like kafka can not accept connections on localhost if it is not on the same network),
  gradle 4, docker, java 8, RAM 8Gb(16 preferable), 3GB free space on disk
 
-Kafka, Spark, Cassandra, Spring Boot
+Technologies: Kafka, Spark, Cassandra, Spring Boot
 
 Improvements: receiving messages via MQTT bridge, autoscaling with Kubernetes or Docker Swarm
 
