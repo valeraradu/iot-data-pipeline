@@ -1,2 +1,6 @@
 rootProject.name = 'iot-data-pipeline'
-include 'device-simulator', 'stream-processor', 'querying-service'
+include 'device-simulator'
+include 'stream-processor'
+include 'querying-service'
+include ':spark-cassandra-datasource'
+project(':spark-cassandra-datasource').projectDir = new File("../spark-cassandra-datasource")

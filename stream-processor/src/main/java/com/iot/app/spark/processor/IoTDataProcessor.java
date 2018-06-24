@@ -1,16 +1,14 @@
 package com.iot.app.spark.processor;
 
-import com.google.common.base.Optional;
 import com.iot.app.spark.model.TemperatureEvent;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.function.Function3;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.functions;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
-import org.apache.spark.streaming.State;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -19,7 +17,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
-import scala.Tuple2;
+
+import java.util.HashMap;
+import java.util.Map;
+
 
 @ComponentScan("com.device.com.simulator")
 @EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
@@ -27,15 +28,6 @@ import scala.Tuple2;
 public class IoTDataProcessor implements CommandLineRunner {
 
     private static final Logger logger = Logger.getLogger(IoTDataProcessor.class);
-    private static final Function3<String, Optional<TemperatureEvent>, State<Boolean>, Tuple2<TemperatureEvent, Boolean>> processedVehicleFunc = (String, iot, state) -> {
-        Tuple2<TemperatureEvent, Boolean> vehicle = new Tuple2<>(iot.get(), false);
-        if (state.exists()) {
-            vehicle = new Tuple2<>(iot.get(), true);
-        } else {
-            state.update(Boolean.TRUE);
-        }
-        return vehicle;
-    };
 
     @Value("${com.iot.app.spark.app.name}")
     private String appName;
@@ -78,7 +70,7 @@ public class IoTDataProcessor implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args) throws StreamingQueryException, InterruptedException {
+    public void run(String... args) throws StreamingQueryException {
 
         SparkConf conf = new SparkConf()
                 .setAppName(appName)
@@ -87,8 +79,8 @@ public class IoTDataProcessor implements CommandLineRunner {
                 .set("spark.cassandra.connection.port", cassandraPort)
                 .set("spark.cassandra.auth.username", cassandraUsername)
                 .set("spark.cassandra.auth.password", cassandraPassword)
-                .set("spark.cassandra.connection.keep_alive_ms", cassandraKeep_alive);
-
+                .set("spark.cassandra.connection.keep_alive_ms", cassandraKeep_alive)
+                .set("spark.sql.streaming.checkpointLocation", checkpointDir);
         SparkSession spark = SparkSession.builder().config(conf).getOrCreate();
 
         Dataset<TemperatureEvent> dataStreamReader = spark
@@ -98,18 +90,106 @@ public class IoTDataProcessor implements CommandLineRunner {
                 .option("subscribe", kafkaTopic)
                 .load().as(Encoders.bean(TemperatureEvent.class));
 
-        StreamingQuery query = dataStreamReader.groupBy("str1")
+        Map<String, String> columnNameMappings = new HashMap<>();
+        columnNameMappings.put("keyspace", "mykeyspace");
+        columnNameMappings.put("table", "mytable");
+        columnNameMappings.put("routeId", "routeid");
+        columnNameMappings.put("vehicleType", "vehicletype");
+        columnNameMappings.put("totalCount", "totalcount");
+        columnNameMappings.put("timeStamp", "timestamp");
+        columnNameMappings.put("recordDate", "recorddate");
+
+        StreamingQuery query = dataStreamReader.groupBy(
+                functions.window(dataStreamReader
+                                .col("timestamp"),
+                        "10 seconds", "5 seconds"))
                 .count()
                 .writeStream()
                 .queryName("Test query")
-                .outputMode("complete")
-                .format("console")
+                .format("cassandra")
+                .options(columnNameMappings)
+                .outputMode("update")
                 .start();
 
         query.awaitTermination();
 
-        }
+        return;
 
     }
+
+/*    private void streamingApi() throws InterruptedException {
+        SparkConf conf = new SparkConf()
+                .setAppName(appName)
+                .setMaster(sparkMaster)
+                .set("spark.cassandra.connection.host", cassandraHost)
+                .set("spark.cassandra.connection.port", cassandraPort)
+                .set("spark.cassandra.connection.keep_alive_ms", cassandraKeep_alive);
+        JavaStreamingContext jssc =
+                new JavaStreamingContext(conf, Durations.seconds(5));
+
+        jssc.checkpoint(checkpointDir);
+
+        Map<String, Object> kafkaParams = new HashMap<>();
+        kafkaParams.put("zookeeper.connect", zookeeper);
+        kafkaParams.put("bootstrap.servers", brokerlist);
+        kafkaParams.put("key.deserializer", StringDeserializer.class);
+        kafkaParams.put("value.deserializer", TemperatureEventDeserializer.class);
+        kafkaParams.put("auto.offset.reset", "latest");
+        kafkaParams.put("group.id", "mitosis");
+        kafkaParams.put("enable.auto.commit", false);
+
+        Collection<String> topics = Arrays.asList(kafkaTopic);
+
+        JavaInputDStream<ConsumerRecord<String, TemperatureEvent>> stream =
+                KafkaUtils.createDirectStream(jssc,
+                        LocationStrategies.PreferConsistent(),
+                        ConsumerStrategies.Subscribe(topics, kafkaParams)
+                );
+
+        JavaDStream<TemperatureEvent> dStream = stream.map(tuple -> tuple.value());
+
+        JavaPairDStream<TemperatureEvent, JavaDStream<TemperatureEvent>>
+                javaPairInputDStream =
+                dStream.mapToPair(te ->
+                        new Tuple2<>(te, dStream.filter(te2 ->
+                                GeoDistanceCalculator.isInPOIRadius(
+                                        Double.valueOf(te.getLatitude()),
+                                        Double.valueOf(te.getLongitude()),
+                                        Double.valueOf(te2.getLatitude()),
+                                        Double.valueOf(te2.getLongitude()),
+                                        30
+                                ))));
+
+        javaPairInputDStream.map(te -> new EnrichedTemperatureEvent(
+                te._1.getLatitude(),
+                te._1.getLongitude(),
+                te._1.getTemp(),
+                te._2.va
+
+        ))
+
+
+        // Map Cassandra table column
+        Map<String, String> columnNameMappings = new HashMap<>();
+        columnNameMappings.put("routeId", "routeid");
+        columnNameMappings.put("vehicleType", "vehicletype");
+        columnNameMappings.put("totalCount", "totalcount");
+        columnNameMappings.put("timeStamp", "timestamp");
+        columnNameMappings.put("recordDate", "recorddate");
+
+        // call CassandraStreamingJavaUtil function to save in DB
+        javaFunctions(dStream)
+                .writerBuilder("traffickeyspace",
+                        "total_traffic",
+                        CassandraJavaUtil.mapToRow(
+                                EnrichedTemperatureEvent.class,
+                                columnNameMappings)).saveToCassandra();
+
+
+        jssc.start();
+        jssc.awaitTermination();
+    }*/
+
+}
 
 

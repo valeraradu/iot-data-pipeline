@@ -2,6 +2,7 @@ package com.device.simulator.producer;
 
 import com.device.simulator.model.TemperatureEvent;
 import com.device.simulator.util.Sender;
+import com.device.simulator.util.SenderConfig;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,18 +19,22 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-@ComponentScan("com.device.com.simulator")
+@ComponentScan("com.device")
 @EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
 @SpringBootApplication
 public class IoTDataProducer implements CommandLineRunner {
 
     private static final Logger logger = Logger.getLogger(IoTDataProducer.class);
+
     @Value("${com.iot.app.kafka.zookeeper}")
     private String zookeeper;
+
     @Value("${com.iot.app.kafka.brokerlist}")
     private String brokerList;
+
     @Value("${com.iot.app.kafka.topic}")
     private String topic;
+
     @Autowired
     private Sender sender;
 

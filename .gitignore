@@ -12,18 +12,18 @@
 *.iml
 .idea/
 
-/out/
+**/out/
 
 .idea_modules/
 .idea/replstate.xml
 
 hs_err_pid*
 
-gradlew
-gradlew.bat
 .gradle
 **/build/
 
+!gradlew
+!gradlew.bat
 !gradle-wrapper.jar
 
 .gradletasknamecache
